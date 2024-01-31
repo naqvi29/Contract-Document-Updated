@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Contract Form</title>
+</head>
+<body>
+
+<div class="container mt-5">
+    <h2 class="text-center">Contract Form</h2>
+    <form id="contractForm" action="/Home" method="post">
+        <div class="form-group">
+            <label for="numPersons">Number of Persons:</label>
+            <input type="number" value="0" class="form-control" id="numPersons" name="numPersons" required>
+        </div>
+
+        <div id="personDetails"></div>
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" class="form-control" id="email" name="email" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Submit</button>
+    </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    let formData = {}; // Store form data
+
+    document.getElementById('contractForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+        submitForm();
+    });
+
+    document.getElementById('numPersons').addEventListener('input', function () {
+        const numPersons = parseInt(this.value, 10);
+        formData.numPersons = numPersons;
+        generatePersonFields(numPersons);
+    });
+
+    
+    function submitForm() {
+        const formData = new FormData(document.getElementById('contractForm'));
+
+        fetch("/Home", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.text(); // Use text() to extract the text content
+            } else {
+                throw new Error('Network response was not ok');
+            }
+        })
+        .then(responseText => {
+            if (responseText === "done") {
+                window.location.href = "/done";
+            } else {
+                Swal.fire({
+                    title: "Oops!",
+                    text: responseText,
+                    icon: "error"
+                });
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+    function generatePersonFields(numPersons) {
+        const personDetailsContainer = document.getElementById('personDetails');
+        personDetailsContainer.innerHTML = '';
+
+        for (let i = 1; i <= numPersons; i++) {
+            const accordion = document.createElement('div');
+            accordion.className = 'accordion mb-3 ';
+            accordion.id = `accordionPerson${i}`;
+
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            const cardHeader = document.createElement('div');
+            cardHeader.className = 'card-header';
+            cardHeader.innerHTML = `<h5 class="mb-0">Person ${i}</h5>`;
+
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+
+            // Full Name
+            const fullNameInput = createInputField('text', `fullName${i}`, 'Full Name:', formData[`fullName${i}`] || '');
+            cardBody.appendChild(fullNameInput);
+
+            // RG
+            const rgInput = createInputField('text', `rg${i}`, 'RG:', formData[`rg${i}`] || '');
+            cardBody.appendChild(rgInput);
+
+            // CPF
+            const cpfInput = createInputField('text', `cpf${i}`, 'CPF:', formData[`cpf${i}`] || '');
+            cardBody.appendChild(cpfInput);
+
+            // Address
+            const addressInput = createInputField('text', `address${i}`, 'Address:', formData[`address${i}`] || '');
+            cardBody.appendChild(addressInput);
+
+            // Children
+            const numChildrenInput = createInputField('number', `numChildren${i}`, `Number of Children for person${i}:`, formData[`numChildren${i}`] || '0');
+            cardBody.appendChild(numChildrenInput);
+
+            const childrenContainer = document.createElement('div');
+            childrenContainer.id = `childrenContainer${i}`;
+            cardBody.appendChild(childrenContainer);
+
+            numChildrenInput.addEventListener('input', function () {
+                generateChildFields(i);
+            });
+
+            card.appendChild(cardHeader);
+            card.appendChild(cardBody);
+            accordion.appendChild(card);
+
+            personDetailsContainer.appendChild(accordion);
+        }
+    }
+
+    function createInputField(type, id, label, value) {
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'form-group';
+
+        const inputLabel = document.createElement('label');
+        inputLabel.setAttribute('for', id);
+        inputLabel.textContent = label;
+
+        const inputField = document.createElement('input');
+        inputField.setAttribute('type', type);
+        inputField.className = 'form-control';
+        inputField.setAttribute('id', id);
+        inputField.setAttribute('name', id);
+        inputField.value = value || '';
+
+        
+        if (id.includes("childDob")) {
+            inputField.required = false;
+        }else if(id.includes("childCpf")){
+            inputField.required = false;
+        }else{            
+        inputField.required = true;
+
+        }
+
+
+        inputGroup.appendChild(inputLabel);
+        inputGroup.appendChild(inputField);
+
+        // Update formData when the input value changes
+        inputField.addEventListener('input', function () {
+            formData[id] = inputField.value;
+        });
+
+        return inputGroup;
+    }
+
+    function generateChildFields(personIndex) {
+        const numChildren = parseInt(document.getElementById(`numChildren${personIndex}`).value, 10);
+        
+        const childrenContainer = document.getElementById(`childrenContainer${personIndex}`);
+        childrenContainer.innerHTML = '';
+
+        for (let j = 1; j <= numChildren; j++) {
+            const childInput = createInputField('text', `childName${personIndex}_${j}`, `Child ${j}'s Full Name:`, formData[`childName${personIndex}_${j}`] || '');
+            const childDob = createInputField('date',`childDob${personIndex}_${j}`,`Child ${j}'s Date of Birth:`,formData[`childDob${personIndex}_${j}`] || '');
+            const childCpf = createInputField('text',`childCpf${personIndex}_${j}`,`Child ${j}'s CPF:`,formData[`childCpf${personIndex}_${j}`] || '');
+            childrenContainer.appendChild(childInput);
+            childrenContainer.appendChild(childDob);
+            childrenContainer.appendChild(childCpf);
+
+            // Update formData when the child input value changes
+            childInput.querySelector('input').addEventListener('input', function () {
+                formData[`childName${personIndex}_${j}`] = childInput.querySelector('input').value;
+            });
+        }
+    }
+</script>
+
+</body>
+</html>
